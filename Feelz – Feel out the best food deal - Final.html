@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Feelz – Feel out the best food deal</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{min-height:100vh;background:linear-gradient(180deg,#ede9fe 0%,#c4b5fd 55%,#8b5cf6 100%) fixed}
+@media (prefers-color-scheme:dark){body{background:linear-gradient(180deg,#2e1065 0%,#1e1b4b 60%,#0f0a1f 100%) fixed}}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:25;background:linear-gradient(90deg,#5b21b6,#4338ca)}
+@keyframes wave{to{transform:translateX(-50%)}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+</style>
+</head>
+<body class="text-stone-900 dark:text-stone-100">
+<div id="root"></div>
+
+<!-- MOCK DATA: in production, vendor adapters (DoorDash, GrubHub, Uber Eats, Instacart, Walmart, direct) would write this shape.
+     m = menu markup %, d = delivery fee, s = service fee %, promo = {l,o,min}, eta = minutes, t = minutes since last sync -->
+<script type="application/json" id="data">
+{
+ "zips":[{"z":"60473","n":"South Holland","f":1},{"z":"60426","n":"Harvey","f":1.4},{"z":"60409","n":"Calumet City","f":1.2},{"z":"60430","n":"Homewood","f":1.6},{"z":"60419","n":"Dolton","f":0.9}],
+ "places":[
+  {"id":"p1","name":"Maria’s Taqueria","cat":"Mexican","local":true,"claimed":true,"mi":1.2,
+   "menu":[{"n":"Street tacos (3)","p":9.5,"main":1},{"n":"Burrito grande","p":11,"main":1},{"n":"Chips & guac","p":5.5},{"n":"Horchata","p":3.5},{"n":"Single taco","p":3.25,"main":1}],
+   "ch":[{"p":"DoorDash","m":18,"d":2.99,"s":12,"promo":{"l":"$5 off $25","o":5,"min":25},"eta":35,"t":12},
+         {"p":"Uber Eats","m":15,"d":1.99,"s":15,"promo":{"l":"$3 off $15","o":3,"min":15},"eta":30,"t":8},
+         {"p":"GrubHub","m":12,"d":3.49,"s":10,"eta":40,"t":22},
+         {"p":"Postmates","m":16,"d":2.49,"s":10,"eta":38,"t":13},
+         {"p":"Pickup","disc":12,"eta":15,"t":3}]},
+  {"id":"p2","name":"Southside Soul Kitchen","cat":"Soul food","local":true,"claimed":true,"mi":2.1,
+   "menu":[{"n":"Smothered chicken plate","p":13.5,"main":1},{"n":"Rib tips combo","p":14.5,"main":1},{"n":"Mac & cheese","p":4.5},{"n":"Peach cobbler","p":5}],
+   "ch":[{"p":"DoorDash","m":20,"d":3.99,"s":12,"eta":45,"t":10},
+         {"p":"Uber Eats","m":18,"d":2.49,"s":15,"promo":{"l":"$4 off $20","o":4,"min":20},"eta":40,"t":15},
+         {"p":"Pickup","disc":10,"eta":20,"t":5}]},
+  {"id":"p3","name":"Slice Brothers Pizza","cat":"Pizza","local":true,"claimed":false,"mi":0.8,
+   "menu":[{"n":"Large cheese pizza","p":15,"main":1},{"n":"Italian beef sandwich","p":10.5,"main":1},{"n":"Garlic knots","p":5},{"n":"2-liter soda","p":3.5},{"n":"Pizza slice","p":3.5,"main":1}],
+   "ch":[{"p":"GrubHub","m":10,"d":1.99,"s":9,"promo":{"l":"$6 off $30","o":6,"min":30},"eta":35,"t":18},
+         {"p":"DoorDash","m":16,"d":2.49,"s":12,"eta":30,"t":9},
+         {"p":"Uber Eats","m":14,"d":0.99,"s":15,"eta":32,"t":7},
+         {"p":"Pickup","disc":8,"eta":15,"t":4}]},
+  {"id":"p4","name":"Lakeshore Wings & Things","cat":"Wings","local":true,"claimed":true,"mi":2.8,
+   "menu":[{"n":"10 wings, 1 flavor","p":13,"main":1},{"n":"Wing & fry combo","p":11.5,"main":1},{"n":"Fries","p":4},{"n":"Lemonade","p":3},{"n":"6 wings","p":7,"main":1}],
+   "ch":[{"p":"DoorDash","m":15,"d":2.99,"s":12,"promo":{"l":"$5 off $20","o":5,"min":20},"eta":38,"t":6},
+         {"p":"GrubHub","m":13,"d":2.99,"s":10,"eta":42,"t":30},
+         {"p":"Pickup","disc":10,"eta":18,"t":2}]},
+  {"id":"p5","name":"Golden Dragon Express","cat":"Chinese","local":true,"claimed":false,"mi":1.9,
+   "menu":[{"n":"General Tso’s chicken","p":10.5,"main":1},{"n":"Beef & broccoli","p":11.5,"main":1},{"n":"Egg rolls (2)","p":3.5},{"n":"Fried rice","p":4.5},{"n":"Lunch special","p":7.5,"main":1}],
+   "ch":[{"p":"Uber Eats","m":16,"d":1.49,"s":15,"eta":30,"t":11},
+         {"p":"DoorDash","m":19,"d":2.99,"s":12,"promo":{"l":"$4 off $18","o":4,"min":18},"eta":35,"t":14},
+         {"p":"Pickup","disc":10,"eta":12,"t":6}]},
+  {"id":"p6","name":"Burger Barn","cat":"Burgers","local":false,"claimed":false,"mi":1.5,
+   "menu":[{"n":"Double cheeseburger meal","p":11,"main":1},{"n":"Chicken sandwich meal","p":10.5,"main":1},{"n":"Shake","p":5},{"n":"Onion rings","p":4},{"n":"Hamburger","p":3.5,"main":1}],
+   "ch":[{"p":"DoorDash","m":22,"d":0.99,"s":12,"eta":25,"t":5},
+         {"p":"Uber Eats","m":20,"d":0.99,"s":15,"promo":{"l":"$5 off $20","o":5,"min":20},"eta":25,"t":5},
+         {"p":"GrubHub","m":18,"d":1.99,"s":10,"eta":30,"t":25},
+         {"p":"Postmates","m":21,"d":1.49,"s":10,"eta":28,"t":11},
+         {"p":"Pickup","disc":0,"eta":10,"t":3}]},
+  {"id":"p7","name":"Greenfield Market","cat":"Grocery","local":true,"claimed":true,"mi":2.4,
+   "menu":[{"n":"Dozen eggs","p":3.5,"main":1},{"n":"Whole chicken","p":8.5,"main":1},{"n":"Bag of rice (5 lb)","p":5.5},{"n":"Fresh produce box","p":12},{"n":"Saint James organic brewed tea","p":3.49}],
+   "ch":[{"p":"Instacart","m":15,"d":3.99,"s":5,"promo":{"l":"$10 off $50","o":10,"min":50},"eta":60,"t":9},
+         {"p":"Walmart Delivery","m":0,"d":7.95,"s":0,"eta":120,"t":16},
+         {"p":"Pickup","disc":5,"eta":20,"t":4}]},
+  {"id":"p8","name":"McDonald’s","app":1,"cat":"Fast food","local":false,"claimed":false,"mi":1.1,"menu":[{"n":"Big Mac meal","p":9.5,"main":1},{"n":"10 pc McNuggets meal","p":9,"main":1},{"n":"Apple pie","p":1.5},{"n":"Large fries","p":3.5},{"n":"McDouble","p":3.2,"main":1}],"ch":[{"p":"DoorDash","m":25,"d":0.99,"s":12,"promo":{"l":"$5 off $20","o":5,"min":20},"eta":25,"t":7},{"p":"Uber Eats","m":22,"d":0.99,"s":15,"eta":25,"t":6},{"p":"Postmates","m":24,"d":1.49,"s":10,"eta":28,"t":14},{"p":"Pickup","disc":10,"eta":8,"t":3}]},
+  {"id":"p9","name":"Wendy’s","app":1,"cat":"Fast food","local":false,"claimed":false,"mi":1.7,"menu":[{"n":"Dave’s Single combo","p":9.5,"main":1},{"n":"Spicy chicken combo","p":9,"main":1},{"n":"Frosty","p":2.5},{"n":"Nuggets (6)","p":4},{"n":"Jr. Cheeseburger","p":2.2,"main":1}],"ch":[{"p":"DoorDash","m":20,"d":1.99,"s":12,"eta":30,"t":9},{"p":"Uber Eats","m":18,"d":0.99,"s":15,"promo":{"l":"$4 off $15","o":4,"min":15},"eta":28,"t":8},{"p":"Pickup","disc":8,"eta":10,"t":4}]},
+  {"id":"p10","name":"Portillo’s","app":1,"cat":"Fast food","local":false,"claimed":false,"mi":2.6,"menu":[{"n":"Italian beef & fries","p":12.5,"main":1},{"n":"Chicago dog combo","p":9.5,"main":1},{"n":"Chocolate cake shake","p":6},{"n":"Cheese fries","p":4.5},{"n":"Hot dog","p":4.5,"main":1}],"ch":[{"p":"DoorDash","m":20,"d":2.99,"s":12,"eta":35,"t":10},{"p":"Uber Eats","m":18,"d":1.99,"s":15,"promo":{"l":"$5 off $25","o":5,"min":25},"eta":32,"t":9},{"p":"GrubHub","m":15,"d":2.99,"s":10,"eta":38,"t":20},{"p":"Pickup","disc":5,"eta":15,"t":5}]},
+  {"id":"p11","name":"Popeyes","app":1,"cat":"Fast food","local":false,"claimed":false,"mi":2.2,"menu":[{"n":"3 pc tenders combo","p":10,"main":1},{"n":"Chicken sandwich combo","p":9.5,"main":1},{"n":"Biscuit","p":1.5},{"n":"Mac & cheese","p":3.5},{"n":"2 pc chicken","p":5,"main":1}],"ch":[{"p":"DoorDash","m":22,"d":1.49,"s":12,"promo":{"l":"$5 off $20","o":5,"min":20},"eta":28,"t":6},{"p":"Postmates","m":20,"d":1.99,"s":10,"eta":30,"t":12},{"p":"Uber Eats","m":20,"d":0.99,"s":15,"eta":27,"t":7},{"p":"Pickup","disc":10,"eta":12,"t":4}]},
+  {"id":"p12","name":"Aldi","app":1,"cat":"Grocery","local":false,"claimed":false,"mi":2.0,"menu":[{"n":"Dozen eggs","p":3.2,"main":1},{"n":"Chicken thighs (3 lb)","p":8.5,"main":1},{"n":"Loaf of bread","p":1.9},{"n":"Produce bundle","p":9},{"n":"Saint James organic brewed tea","p":3.49}],"ch":[{"p":"Instacart","m":15,"d":3.99,"s":5,"promo":{"l":"$10 off $50","o":10,"min":50},"eta":70,"t":8},{"p":"Pickup","disc":0,"eta":25,"t":6}]},
+  {"id":"p13","name":"Jewel-Osco","app":1,"cat":"Grocery","local":false,"claimed":false,"mi":1.8,"menu":[{"n":"Dozen eggs","p":3.9,"main":1},{"n":"Rotisserie chicken","p":7.99,"main":1},{"n":"Bag of rice (5 lb)","p":4.5},{"n":"Fresh produce box","p":13},{"n":"Saint James organic brewed tea","p":3.49}],"ch":[{"p":"Instacart","m":12,"d":3.99,"s":5,"promo":{"l":"$10 off $50","o":10,"min":50},"eta":60,"t":9},{"p":"DoorDash","m":15,"d":2.99,"s":12,"eta":50,"t":12},{"p":"Pickup","disc":5,"eta":25,"t":5}]},
+  {"id":"p14","name":"Pete’s Fresh Market","cat":"Grocery","local":false,"claimed":false,"mi":3.1,"menu":[{"n":"Dozen eggs","p":3,"main":1},{"n":"Whole chicken","p":7.5,"main":1},{"n":"Produce box","p":10},{"n":"Tortillas (24)","p":2.5},{"n":"Saint James organic brewed tea","p":3.49}],"ch":[{"p":"Instacart","m":10,"d":3.99,"s":5,"eta":65,"t":10},{"p":"Postmates","m":12,"d":2.99,"s":10,"eta":55,"t":15},{"p":"Pickup","disc":5,"eta":25,"t":5}]},
+  {"id":"p15","name":"Tony’s Produce","cat":"Grocery","local":true,"claimed":false,"mi":2.7,"menu":[{"n":"Seasonal produce box","p":11,"main":1},{"n":"Dozen eggs","p":3.4,"main":1},{"n":"Onions & potatoes","p":5.5},{"n":"Fresh herbs","p":2.5},{"n":"Saint James organic brewed tea","p":3.49}],"ch":[{"p":"DoorDash","m":14,"d":2.99,"s":12,"eta":50,"t":11},{"p":"Pickup","disc":8,"eta":20,"t":4}]},
+  {"id":"p16","name":"Fairplay Foods","cat":"Grocery","local":true,"claimed":false,"mi":2.3,"menu":[{"n":"Dozen eggs","p":3.6,"main":1},{"n":"Whole chicken","p":8,"main":1},{"n":"Bag of rice (5 lb)","p":5},{"n":"Produce box","p":12.5},{"n":"Saint James organic brewed tea","p":3.49}],"ch":[{"p":"Instacart","m":14,"d":3.99,"s":5,"eta":60,"t":13},{"p":"Pickup","disc":5,"eta":20,"t":6}]},
+  {"id":"p17","name":"Fairway Market","cat":"Grocery","local":false,"claimed":false,"mi":3.4,"menu":[{"n":"Dozen eggs","p":4.2,"main":1},{"n":"Rotisserie chicken","p":8.5,"main":1},{"n":"Pasta & sauce kit","p":7},{"n":"Produce box","p":14},{"n":"Saint James organic brewed tea","p":3.49}],"ch":[{"p":"Instacart","m":18,"d":3.99,"s":5,"eta":70,"t":14},{"p":"Postmates","m":20,"d":2.99,"s":10,"eta":60,"t":18},{"p":"Pickup","disc":3,"eta":25,"t":7}]},
+  {"id":"p18","name":"3D Café","cat":"Café","local":true,"claimed":false,"mi":1.4,"menu":[{"n":"Breakfast sandwich","p":8.5,"main":1},{"n":"Chicken panini","p":10.5,"main":1},{"n":"Pastry","p":3.5},{"n":"Latte","p":4.5},{"n":"Bagel & coffee","p":5,"main":1}],"ch":[{"p":"DoorDash","m":17,"d":2.49,"s":12,"eta":30,"t":8},{"p":"Uber Eats","m":15,"d":1.99,"s":15,"promo":{"l":"$3 off $15","o":3,"min":15},"eta":28,"t":10},{"p":"Pickup","disc":8,"eta":12,"t":4}]}
+ ],
+ "events":[
+  {"k":"event","i":"🥕","t":"South Suburbs Farmers Market","w":"Sat 9 AM","at":"Greenfield Market lot","z":"60473","src":"Village calendar"},
+  {"k":"event","i":"🤝","t":"Local Eats Night","w":"Thu 5 PM","at":"Maria’s Taqueria","z":"60473","src":"Chamber of Commerce"},
+  {"k":"event","i":"🚚","t":"Food Truck Friday","w":"Fri 11 AM","at":"Village Green","z":"60430","src":"Village calendar"},
+  {"k":"event","i":"📚","t":"Budget Meals Cooking Demo","w":"Tue 6 PM","at":"Homewood Public Library","z":"60430","src":"Library calendar"},
+  {"k":"event","i":"🥬","t":"Harvest Pop-Up Market","w":"Sun 10 AM","at":"Tony’s Produce lot","z":"60419","src":"Park district"},
+  {"k":"event","i":"🥫","t":"Thanksgiving Food Drive","w":"Sat 11 AM","at":"Community Center","z":"60409","src":"Village calendar"},
+  {"k":"event","i":"🍲","t":"Soul Food Sunday Fundraiser","w":"Sun 1 PM","at":"Southside Soul Kitchen","z":"60426","src":"Church bulletin"},
+  {"k":"fun","i":"🎤","t":"Open mic & tacos","w":"Fri 7 PM","at":"Maria’s Taqueria","z":"60473","src":"Venue page"},
+  {"k":"fun","i":"🎳","t":"Bowling league night","w":"Wed 6 PM","at":"Lakeshore Lanes","z":"60473","src":"Venue page"},
+  {"k":"fun","i":"🎷","t":"Live jazz brunch","w":"Sun 11 AM","at":"Harvey Arts Center","z":"60426","src":"Arts council"},
+  {"k":"fun","i":"🏀","t":"Youth hoops night","w":"Fri 7 PM","at":"Dolton Rec Center","z":"60419","src":"Park district"},
+  {"k":"fun","i":"🎬","t":"Family movie night","w":"Sat 6 PM","at":"Calumet Rec Center","z":"60409","src":"Park district"}
+ ],
+ "friends":[
+  {"pid":"p1","who":"Jay","note":"Best tacos in the south burbs. Get them for pickup."},
+  {"pid":"p2","who":"Tasha","note":"Sunday plate is huge. Feeds two."},
+  {"pid":"p3","who":"Marcus","note":"Italian beef is the move."}
+ ]
+}
+</script>
+
+<script type="text/babel">
+const { useState, useMemo, useEffect } = React;
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const mem = {};
+const store = { get: k => { try { const v = localStorage.getItem(k); if (v) return JSON.parse(v); } catch {} return mem[k] ?? null; }, set: (k, v) => { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }, del: k => { delete mem[k]; try { localStorage.removeItem(k); } catch {} } };
+const AK = "feelz_accounts", SK = "feelz_session";
+const hash = async (e, p) => { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("feelz:" + e + ":" + p)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join(""); };
+const BTN = "mt-3 w-full rounded-xl bg-violet-700 py-2 text-sm font-semibold text-white dark:bg-yellow-400 dark:text-stone-900";
+const fmt = n => "$" + n.toFixed(2);
+
+// Pricing engine: total cost of a basket on one channel
+function quote(S, tip, ch, cat) {
+  const rate = cat === "Grocery" ? 0.01 : 0.1025;
+  if (ch.p === "Pickup") {
+    const promo = S * (ch.disc || 0) / 100, tax = (S - promo) * rate;
+    return { total: S - promo + tax, base: S, fees: 0, promo, tip: 0, tax };
+  }
+  const base = S * (1 + ch.m / 100);
+  const fees = ch.d + base * ch.s / 100 + (S > 0 && S < 12 ? 2 : 0);
+  const promo = ch.promo && base >= ch.promo.min ? ch.promo.o : 0;
+  const tax = base * rate, t = base * tip / 100;
+  return { total: Math.max(0, base + fees + tax - promo + t), base, fees, promo, tip: t, tax };
+}
+function rank(place, S, tip, mode) {
+  return place.ch
+    .filter(c => mode === "any" || (mode === "pickup") === (c.p === "Pickup"))
+    .map(c => ({ ch: c, q: quote(S, tip, c, place.cat) }))
+    .sort((a, b) => a.q.total - b.q.total);
+}
+const dist = (pl, zip) => (pl.mi * zip.f).toFixed(1);
+const ago = m => (m < 1 ? "just now" : m + " min ago");
+
+const BADGE = { "DoorDash": "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300", "Uber Eats": "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300", "GrubHub": "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300", "Instacart": "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300", "Walmart Delivery": "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300", "Postmates": "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300", "Pickup": "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" };
+const Chip = ({ p }) => <span className={"rounded-full px-2 py-0.5 text-xs font-semibold " + BADGE[p]}>{p === "Pickup" ? "Pickup / direct" : p}</span>;
+const Card = ({ children, className = "", ...r }) => <div className={"rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-700 dark:bg-stone-800 " + className} {...r}>{children}</div>;
+
+// Brand: purple base, blue + yellow sound waves, music-note mascot, "F" icon mark
+const Mascot = ({ size = 96 }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label="Feelz eighth-note mascot">
+    <path d="M68 10V66" stroke="#facc15" strokeWidth="8" strokeLinecap="round" />
+    <path d="M68 10C68 30 92 34 86 60C82 48 74 46 68 44Z" fill="#facc15" />
+    <ellipse cx="46" cy="70" rx="25" ry="19" transform="rotate(-20 46 70)" fill="#facc15" />
+    <g transform="rotate(-20 46 70)" fill="#fff" stroke="#e5e7eb" strokeWidth="1"><rect x="34" y="44" width="24" height="9" rx="2" /><circle cx="37" cy="41" r="7" /><circle cx="46" cy="37" r="8" /><circle cx="55" cy="41" r="7" /></g>
+    <circle cx="38" cy="68" r="3.5" fill="#3b1d6e" /><circle cx="52" cy="63" r="3.5" fill="#3b1d6e" />
+    <path d="M39 76q7 6 14-2" stroke="#3b1d6e" strokeWidth="3" fill="none" strokeLinecap="round" />
+  </svg>
+);
+const Mark = () => <Mascot size={34} />;
+
+function Splash() {
+  const rows = [["#38bdf8", 5, 0.9], ["#facc15", 7, 0.9], ["#a78bfa", 6, 0.7], ["#38bdf8", 9, 0.6], ["#facc15", 8, 0.6]];
+  const notes = [["10%", "38%", "🍕", 0], ["82%", "46%", "🌮", 0.6], ["26%", "62%", "🍔", 1.1], ["68%", "34%", "🍟", 1.6]];
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-between overflow-hidden bg-gradient-to-b from-violet-900 via-violet-700 to-indigo-900 px-6 py-14 text-white">
+      <div className="text-center">
+        <div className="text-5xl font-black italic tracking-tight">Feelz</div>
+        <p className="mt-2 text-lg font-medium text-yellow-300">Feelin’ out the deals for ya’</p>
+      </div>
+      <div className="relative w-full max-w-sm">
+        <div className="mx-auto w-fit" style={{ animation: "floaty 2.4s ease-in-out infinite" }}><Mascot size={112} /></div>
+        <div className="mt-2 overflow-hidden">
+          {rows.map(([c, s, o], i) => (
+            <svg key={i} viewBox="0 0 400 40" width="200%" height="28" preserveAspectRatio="none" style={{ display: "block", opacity: o, animation: `wave ${s}s linear infinite${i % 2 ? " reverse" : ""}` }}>
+              <path d="M0 20Q25 0 50 20T100 20T150 20T200 20T250 20T300 20T350 20T400 20" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          ))}
+        </div>
+      </div>
+      {notes.map(([l, t, g, d], i) => <span key={i} aria-hidden="true" className="absolute text-2xl text-yellow-300" style={{ left: l, top: t, animation: `floaty 3s ease-in-out ${d}s infinite` }}>{g}</span>)}
+      <div className="text-center text-sm font-medium">Cooking up Feelz <span className="inline-flex gap-1 text-yellow-300">{["🍳", "🥘", "🍜"].map((n, i) => <span key={i} style={{ animation: `floaty 1s ease-in-out ${i * 0.2}s infinite` }}>{n}</span>)}</span></div>
+    </div>
+  );
+}
+
+function Login({ onLogin }) {
+  const [mode, setMode] = useState("login");
+  const [biz, setBiz] = useState(false);
+  const [f, setF] = useState({ name: "", email: "", pw: "" });
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const inp = "w-full rounded-xl bg-white px-4 py-3 text-stone-900 outline-none";
+  const set = k => e => setF({ ...f, [k]: e.target.value });
+  const submit = async () => {
+    const email = f.email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setErr("Enter a valid email.");
+    if (f.pw.length < 6) return setErr("Password needs at least 6 characters.");
+    setBusy(true); setErr("");
+    try {
+      const h = await hash(email, f.pw), all = store.get(AK) || {}, a = all[email];
+      if (mode === "signup") {
+        if (a) { setBusy(false); return setErr("That email already has an account. Log in instead."); }
+        const acct = { email, name: f.name.trim() || email.split("@")[0], role: biz ? "merchant" : "consumer", zip: DATA.zips[0].z, h };
+        all[email] = acct; store.set(AK, all); store.set(SK, email); onLogin(acct);
+      } else {
+        if (!a || a.h !== h) { setBusy(false); return setErr("Email or password is incorrect."); }
+        store.set(SK, email); onLogin(a);
+      }
+    } catch (e) { setErr("Something went wrong. Try again."); setBusy(false); }
+  };
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-violet-800 to-indigo-900 px-6 text-white">
+      <Mascot size={84} />
+      <h1 className="text-5xl font-black italic">Feelz</h1>
+      <p className="mb-5 text-sm text-violet-200">Feel out the best food deal near you</p>
+      <div className="w-full max-w-sm space-y-3">
+        <div className="flex rounded-xl bg-white/15 p-0.5 text-sm">
+          {[["login", "Log in"], ["signup", "Sign up"]].map(([v, l]) => <button key={v} onClick={() => { setMode(v); setErr(""); }} className={"flex-1 rounded-lg py-2 font-semibold " + (mode === v ? "bg-yellow-400 text-violet-900" : "text-violet-100")}>{l}</button>)}
+        </div>
+        {mode === "signup" && <input aria-label="Name" placeholder={biz ? "Business or owner name" : "Your name"} value={f.name} onChange={set("name")} className={inp} />}
+        <input type="email" aria-label="Email" placeholder={biz ? "Business email" : "Email"} value={f.email} onChange={set("email")} className={inp} />
+        <input type="password" aria-label="Password" placeholder="Password" value={f.pw} onChange={set("pw")} onKeyDown={e => e.key === "Enter" && submit()} className={inp} />
+        {err && <p role="alert" className="text-sm font-medium text-yellow-300">{err}</p>}
+        <button disabled={busy} onClick={submit} className="w-full rounded-xl bg-yellow-400 py-3 font-bold text-violet-900 disabled:opacity-60">{mode === "signup" ? (biz ? "Create business account" : "Create account") : (biz ? "Business log in" : "Log in")}</button>
+        <button onClick={() => onLogin({ guest: true, name: "Guest", role: "consumer" })} className="w-full rounded-xl border border-white/40 py-3 text-sm font-semibold text-white">Try the demo as a guest</button>
+        <p className="text-center text-xs text-violet-300">Prototype: accounts are saved in this browser only.</p>
+        <button onClick={() => setBiz(!biz)} className="mx-auto block pt-3 text-xs text-violet-300 underline">{biz ? "← Customer account" : "Business owner? Start here"}</button>
+      </div>
+    </div>
+  );
+}
+
+function Drawer({ open, onClose, go, role }) {
+  const items = [["home", "🍽️ Food Feelz"], ["events", "🎟️ Events"], ["fun", "🎶 Entertainment"], ["account", "👤 My profile"], ["biz", "🏪 Business Owners"], ["settings", "⚙️ Settings"]];
+  return (
+    <>
+      <div onClick={onClose} className={"fixed inset-0 z-30 bg-black/50 transition-opacity " + (open ? "opacity-100" : "pointer-events-none opacity-0")} />
+      <aside className={"fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-violet-800 to-indigo-950 p-5 text-white transition-transform " + (open ? "translate-x-0" : "-translate-x-full")} style={{ paddingTop: "calc(env(safe-area-inset-top,0px) + 1.25rem)" }}>
+        <div className="mb-6 flex items-center gap-2"><Mark /><span className="text-2xl font-black italic">Feelz</span></div>
+        {items.map(([id, l]) => <button key={id} onClick={() => { go(id); onClose(); }} className="block w-full rounded-xl px-3 py-3 text-left font-medium hover:bg-white/10">{l}</button>)}
+        <p className="mt-6 px-3 text-xs text-violet-300">Signed in as {role}</p>
+      </aside>
+    </>
+  );
+}
+
+function PlaceCard({ pl, zip, mode, tip, onOpen }) {
+  const S = pl.menu[0].p + pl.menu[1].p;
+  const r = rank(pl, S, tip, mode);
+  if (!r.length) return null;
+  const best = r[0], worst = r[r.length - 1];
+  const save = worst.q.total - best.q.total;
+  return (
+    <Card onClick={() => onOpen(pl.id)} className="cursor-pointer active:scale-[.99]">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-bold leading-tight">{pl.name}</h3>
+          <p className="text-xs text-stone-500 dark:text-stone-400">{pl.cat} · {dist(pl, zip)} mi{pl.local ? " · Local" : ""}{pl.claimed ? " · ✓ Owner-verified" : ""}</p>
+        </div>
+        <div className="text-right">
+          <div className="text-xl font-black">{fmt(best.q.total)}</div>
+          <div className="text-[11px] text-stone-500 dark:text-stone-400">est. total · before tip</div>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Chip p={best.ch.p} />
+        {best.ch.promo && best.q.promo > 0 && <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{best.ch.promo.l}</span>}
+        <span className="text-xs text-stone-500 dark:text-stone-400">~{best.ch.eta} min</span>
+        {save > 0.5 && <span className="ml-auto rounded-lg bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">Save {fmt(save)} vs {worst.ch.p}</span>}
+      </div>
+    </Card>
+  );
+}
+
+function Deals({ zip, onOpen }) {
+  const [mode, setMode] = useState("any");
+  const [sort, setSort] = useState("savings");
+  const [cat, setCat] = useState("All");
+  const [all, setAll] = useState(false);
+  const cats = ["All", ...new Set(DATA.places.map(p => p.cat))];
+  const list = useMemo(() => {
+    const score = pl => { const r = rank(pl, pl.menu[0].p + pl.menu[1].p, 0, mode); return r.length ? { best: r[0].q.total, save: r[r.length - 1].q.total - r[0].q.total } : null; };
+    return DATA.places.filter(p => cat === "All" || p.cat === cat).map(p => ({ p, s: score(p) })).filter(x => x.s)
+      .sort((a, b) => sort === "savings" ? b.s.save - a.s.save : sort === "price" ? a.s.best - b.s.best : a.p.mi - b.p.mi).map(x => x.p);
+  }, [mode, sort, cat]);
+  const shown = all ? list : list.slice(0, 5);
+  const sel = "min-w-0 flex-1 rounded-xl border border-stone-300 bg-white px-2 py-2 text-sm text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100";
+  return (
+    <div className="space-y-3">
+      <div className="flex rounded-xl bg-stone-200 p-0.5 text-sm dark:bg-stone-700">
+        {[["any", "Any"], ["delivery", "Delivery"], ["pickup", "Pickup"]].map(([v, l]) => <button key={v} onClick={() => setMode(v)} className={"flex-1 rounded-lg px-2 py-1.5 font-medium " + (mode === v ? "bg-white shadow dark:bg-stone-900" : "text-stone-600 dark:text-stone-300")}>{l}</button>)}
+      </div>
+      <div className="flex gap-2">
+        <select aria-label="Sort" value={sort} onChange={e => setSort(e.target.value)} className={sel}><option value="savings">Biggest savings</option><option value="price">Lowest price</option><option value="distance">Closest</option></select>
+        <select aria-label="Category" value={cat} onChange={e => setCat(e.target.value)} className={sel}>{cats.map(c => <option key={c}>{c}</option>)}</select>
+      </div>
+      {shown.length ? shown.map(pl => <PlaceCard key={pl.id} pl={pl} zip={zip} mode={mode} tip={0} onOpen={onOpen} />) : <p className="py-8 text-center text-stone-500">No matches for this filter.</p>}
+      {list.length > 5 && <button onClick={() => setAll(!all)} className="w-full rounded-xl border border-violet-400 py-2 text-sm font-semibold text-violet-800 dark:border-violet-700 dark:text-violet-200">{all ? "Show less" : "Show all " + list.length}</button>}
+    </div>
+  );
+}
+
+function PlacePage({ pl, zip, onBack, toast }) {
+  const [qty, setQty] = useState({ 0: 1, 1: 1 });
+  const [tip, setTip] = useState(15);
+  const S = pl.menu.reduce((s, it, i) => s + it.p * (qty[i] || 0), 0);
+  const items = Object.values(qty).reduce((a, b) => a + b, 0);
+  const r = rank(pl, S, tip, "any");
+  return (
+    <div className="space-y-4">
+      <button onClick={onBack} className="text-sm font-medium text-violet-700 dark:text-yellow-400">← Back to Feelz</button>
+      <div>
+        <h2 className="text-2xl font-black">{pl.name}</h2>
+        <p className="text-sm text-stone-500 dark:text-stone-400">{pl.cat} · {dist(pl, zip)} mi from {zip.n}{pl.local ? " · Local pick" : ""}{pl.claimed ? " · ✓ Owner-verified" : " · Unclaimed page"}</p>
+      </div>
+      <Card>
+        <h3 className="mb-2 font-bold">Build your order</h3>
+        {pl.menu.map((it, i) => (
+          <div key={i} className="flex items-center justify-between border-b border-stone-100 py-2 last:border-0 dark:border-stone-700">
+            <div><div className="text-sm font-medium">{it.n}</div><div className="text-xs text-stone-500 dark:text-stone-400">{fmt(it.p)} menu price</div></div>
+            <div className="flex items-center gap-2">
+              <button aria-label="Remove one" onClick={() => setQty(q => ({ ...q, [i]: Math.max(0, (q[i] || 0) - 1) }))} className="h-8 w-8 rounded-full bg-stone-200 font-bold dark:bg-stone-700">−</button>
+              <span className="w-4 text-center text-sm">{qty[i] || 0}</span>
+              <button aria-label="Add one" onClick={() => setQty(q => ({ ...q, [i]: (q[i] || 0) + 1 }))} className="h-8 w-8 rounded-full bg-yellow-400 font-bold text-stone-900">+</button>
+            </div>
+          </div>
+        ))}
+        <div className={"mt-3 items-center gap-2 text-sm " + (items ? "flex" : "hidden")}>
+          <span className="text-stone-500 dark:text-stone-400">Checkout tip</span>
+          {[0, 10, 15, 20].map(t => <button key={t} onClick={() => setTip(t)} className={"rounded-full border px-3 py-1 " + (tip === t ? "border-violet-700 bg-violet-700 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-stone-900" : "border-stone-300 dark:border-stone-600")}>{t}%</button>)}
+        </div>
+      </Card>
+      <h3 className="font-bold">{items ? "Your Feelz, cheapest first" : "Add items to see your Feelz"}</h3>
+      {items > 0 && r.map(({ ch, q }, i) => (
+        <Card key={ch.p} className={i === 0 ? "ring-2 ring-emerald-500" : ""}>
+          <div className="flex items-center justify-between">
+            <Chip p={ch.p} />
+            <div className="text-xl font-black">{fmt(q.total)}</div>
+          </div>
+          <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+            {ch.p === "Pickup" ? `Direct price${q.promo ? " · saves " + fmt(q.promo) : ""} · tax ${fmt(q.tax)} · no fees, no tip` : `Items ${fmt(q.base)} · fees ${fmt(q.fees)} · tax ${fmt(q.tax)} · tip ${fmt(q.tip)}${q.promo ? " · promo −" + fmt(q.promo) : ""}`}
+          </p>
+          <div className="mt-2 flex items-center justify-between text-xs">
+            <span className="text-stone-500 dark:text-stone-400">~{ch.eta} min · synced {ago(ch.t)}{ch.t > 20 ? " ⚠ may be stale" : ""}</span>
+            {ch.promo && !q.promo && <span className="text-violet-700 dark:text-yellow-400">Add {fmt(ch.promo.min - q.base)} for {ch.promo.l}</span>}
+            {i === 0 && <span className="font-bold text-emerald-600 dark:text-emerald-400">Best Feel</span>}
+          </div>
+          {ch.p === "Pickup" && !pl.app
+            ? <a href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(pl.name + " near " + zip.n + " IL")} target="_blank" rel="noopener" className={BTN + " block text-center"}>Get directions on Google Maps</a>
+            : <button onClick={() => toast("Demo: would open " + (ch.p === "Pickup" ? "the " + pl.name + " app" : ch.p))} className={BTN}>{ch.p === "Pickup" ? "Open " + pl.name + " app" : "Order on " + ch.p}</button>}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// Budget mode: rule-based mock; swap with a Claude API call later
+function Budget({ zip, onOpen, start = 30 }) {
+  const [budget, setBudget] = useState(start);
+  const [people, setPeople] = useState(1);
+  const label = c => { const m = {}; c.forEach(i => { m[i.n] = (m[i.n] || 0) + 1; }); return Object.entries(m).map(([n, k]) => (k > 1 ? k + "× " : "") + n).join(" + "); };
+  const picks = useMemo(() => {
+    const all = DATA.places.filter(p => p.cat !== "Grocery").map(pl => {
+      const mains = pl.menu.filter(i => i.main).sort((a, b) => a.p - b.p);
+      const sides = pl.menu.filter(i => !i.main).sort((a, b) => a.p - b.p);
+      const tot = c => rank(pl, c.reduce((s, i) => s + i.p, 0), 15, "any")[0];
+      const tiers = [Array.from({ length: people }, (_, i) => mains[i % mains.length]), Array(people).fill(mains[0]), Array(Math.ceil(people / 2)).fill(mains[0])];
+      let chosen = tiers.find(c => tot(c).q.total <= budget) || tiers[2];
+      if (tot(chosen).q.total <= budget) for (const s of sides) if (tot([...chosen, s]).q.total <= budget) chosen = [...chosen, s];
+      return { pl, chosen, best: tot(chosen) };
+    });
+    const fit = all.filter(x => x.best.q.total <= budget).sort((a, b) => b.chosen.length - a.chosen.length || (b.pl.local - a.pl.local) || a.best.q.total - b.best.q.total).slice(0, 3);
+    return fit.length ? fit : all.sort((a, b) => a.best.q.total - b.best.q.total).slice(0, 3);
+  }, [budget, people]);
+  const none = picks.some(p => p.best.q.total > budget);
+  return (
+    <div className="space-y-4">
+      <Card>
+        <label className="text-sm font-medium">My budget: <span className="font-black">${budget}</span></label>
+        <input type="range" min="5" max="80" value={budget} onChange={e => setBudget(+e.target.value)} className="mt-2 w-full accent-violet-500" />
+        <div className="mt-2 flex gap-2">{[10, 15, 25, 40, 60].map(v => <button key={v} onClick={() => setBudget(v)} className={"rounded-full border px-3 py-1 text-xs " + (budget === v ? "border-violet-700 bg-violet-700 text-white" : "border-stone-300 dark:border-stone-600")}>${v}</button>)}</div>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+          <span>Eating:</span>
+          {[1, 2, 3, 4].map(n => <button key={n} onClick={() => setPeople(n)} className={"h-9 min-w-9 rounded-full border px-2 " + ((n === 4 ? people >= 4 : people === n) ? "border-violet-700 bg-violet-700 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-stone-900" : "border-stone-300 dark:border-stone-600")}>{n === 4 ? "4+" : n}</button>)}
+          <span className="text-stone-500 dark:text-stone-400">{people === 1 ? "person" : "people"}</span>
+          {people >= 4 && <span className="ml-auto flex items-center gap-2"><button aria-label="Fewer people" onClick={() => setPeople(p => Math.max(4, p - 1))} className="h-8 w-8 rounded-full bg-stone-200 font-bold dark:bg-stone-700">−</button><b>{people}</b><button aria-label="More people" onClick={() => setPeople(p => Math.min(12, p + 1))} className="h-8 w-8 rounded-full bg-yellow-400 font-bold text-stone-900">+</button></span>}
+        </div>
+        <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">Totals include fees, est. tax, and a 15% tip on delivery.</p>
+      </Card>
+      {none && <p className="text-sm font-medium">Nothing fits ${budget} for {people} exactly, so here are the closest options.</p>}
+      {picks.map(({ pl, chosen, best }) => { const over = best.q.total - budget; const shared = chosen.filter(i => i.main).length < people; return (
+        <Card key={pl.id} onClick={() => onOpen(pl.id)} className="cursor-pointer">
+          <div className="flex justify-between"><h3 className="font-bold">{pl.name}</h3><span className="font-black">{fmt(best.q.total)}</span></div>
+          <p className="mt-1 text-sm">{label(chosen)}</p>
+          <div className="mt-2 flex items-center gap-2 text-xs"><Chip p={best.ch.p} /><span className="text-stone-500 dark:text-stone-400">{dist(pl, zip)} mi{pl.local ? " · Local" : ""}</span>{shared && <span className="rounded bg-violet-100 px-1.5 py-0.5 font-semibold text-violet-800 dark:bg-violet-900 dark:text-violet-200">Shared</span>}</div>
+          {over > 0 && <p className="mt-2 text-xs font-medium text-violet-700 dark:text-yellow-300">{fmt(over)} over. Try ${Math.ceil(best.q.total)}.</p>}
+        </Card>); })}
+    </div>
+  );
+}
+
+function Friends({ onOpen }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-stone-500 dark:text-stone-400">Places your community vouches for.</p>
+      {DATA.friends.map((f, i) => {
+        const pl = DATA.places.find(p => p.id === f.pid);
+        return (
+          <Card key={i} onClick={() => onOpen(pl.id)} className="flex cursor-pointer items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-violet-600 font-bold text-white">{f.who[0]}</span>
+            <div><div className="font-bold">{pl.name}</div>
+            <p className="mt-1 text-sm">“{f.note}”</p>
+            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">Recommended by {f.who}</p></div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function Row({ items, zip, onOpen }) {
+  return (
+    <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+      {items.map(p => { const b = rank(p, p.menu[0].p + p.menu[1].p, 0, "any")[0]; return (
+        <button key={p.id} onClick={() => onOpen(p.id)} className="w-40 shrink-0 rounded-2xl border border-violet-200 bg-white p-3 text-left dark:border-violet-800 dark:bg-stone-800">
+          <div className="text-xs text-stone-500 dark:text-stone-400">{p.cat} · {dist(p, zip)} mi</div>
+          <div className="font-bold leading-tight">{p.name}</div>
+          <div className="my-1 text-lg font-black">{fmt(b.q.total)}</div>
+          <Chip p={b.ch.p} />
+        </button>); })}
+    </div>
+  );
+}
+
+function Home({ zip, onOpen, go, onBudget }) {
+  const [b, setB] = useState("");
+  const [tab, setTab] = useState("fast");
+  const bestOf = p => rank(p, p.menu[0].p + p.menu[1].p, 0, "any")[0];
+  const top = DATA.places.map(p => { const r = rank(p, p.menu[0].p + p.menu[1].p, 0, "any"); return { p, s: r[r.length - 1].q.total - r[0].q.total, best: r[0] }; }).sort((a, z) => z.s - a.s).slice(0, 2);
+  const bubbles = [["🍽️", "Food Feelz", "home"], ["🎟️", "Events", "events"], ["🎶", "Fun", "fun"], ["👥", "Community", "friends"], ["📍", "Map", "map"]];
+  const cheap = c => DATA.places.filter(p => p.cat === c).sort((a, z) => bestOf(a).q.total - bestOf(z).q.total);
+  const tabs = [["fast", "🍔 Fast food fixes", cheap("Fast food")], ["local", "💜 Local favorites", DATA.places.filter(p => p.local && p.claimed && p.cat !== "Grocery")], ["groc", "🛒 Stock up", cheap("Grocery")], ["comm", "👥 Community vouches", DATA.friends.map(f => DATA.places.find(p => p.id === f.pid))]];
+  const near = DATA.events.filter(e => e.z === zip.z).slice(0, 2);
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl bg-gradient-to-br from-violet-700 to-indigo-800 p-4 text-white">
+        <h2 className="text-xl font-black">What’s your budget?</h2>
+        <p className="text-sm text-violet-200">We’ll feel out meals that fit it.</p>
+        <div className="mt-3 flex gap-2">
+          <div className="flex flex-1 items-center rounded-xl bg-white px-3 text-stone-900"><span className="font-bold">$</span><input aria-label="Budget in dollars" inputMode="decimal" value={b} onChange={e => setB(e.target.value)} placeholder="15" className="w-full bg-transparent px-2 py-3 outline-none" /></div>
+          <button onClick={() => onBudget(Math.min(80, Math.max(5, +b || 15)))} className="rounded-xl bg-yellow-400 px-4 font-bold text-violet-900">Feel it out</button>
+        </div>
+      </div>
+      <div className="-mx-4 flex justify-between gap-2 overflow-x-auto px-4">
+        {bubbles.map(([i, l, s]) => <button key={s} onClick={() => go(s)} className="shrink-0 text-center"><span className="grid h-14 w-14 place-items-center rounded-full bg-violet-100 text-2xl dark:bg-violet-900">{i}</span><span className="mt-1 block text-xs font-medium">{l}</span></button>)}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {top.map(({ p, s, best }) => (
+          <button key={p.id} onClick={() => onOpen(p.id)} className="rounded-2xl bg-gradient-to-br from-sky-600 to-violet-600 p-3 text-left text-white">
+            <div className="text-xs opacity-80">Top Feel · {p.cat}</div>
+            <div className="font-bold leading-tight">{p.name}</div>
+            <div className="mt-2 text-sm font-black text-yellow-300">Save {fmt(s)}</div>
+            <div className="text-xs">{best.ch.p} · {fmt(best.q.total)}</div>
+          </button>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-lg font-black">Explore</h2>
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4">
+          {tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={"shrink-0 rounded-full border px-3 py-1 text-sm " + (tab === k ? "border-violet-700 bg-violet-700 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-stone-900" : "border-violet-300 bg-white/70 dark:border-stone-600 dark:bg-stone-800")}>{l}</button>)}
+        </div>
+        <Row items={tabs.find(t => t[0] === tab)[2]} zip={zip} onOpen={onOpen} />
+      </div>
+      {near.length > 0 && <div className="space-y-2">
+        <div className="flex items-baseline justify-between"><h2 className="text-lg font-black">🎟️ Happening in {zip.n}</h2><button onClick={() => go("events")} className="text-xs font-bold text-violet-700 underline dark:text-yellow-300">See all</button></div>
+        {near.map((e, i) => <Card key={i} className="flex items-center gap-3 !py-2"><span className="text-xl">{e.i}</span><div className="text-sm"><b>{e.t}</b><div className="text-xs text-stone-500 dark:text-stone-400">{e.w} · {e.at}</div></div></Card>)}
+      </div>}
+      <div className="space-y-2"><h2 className="text-lg font-black">All Feelz</h2><Deals zip={zip} onOpen={onOpen} /></div>
+    </div>
+  );
+}
+
+// Stylized map: pins are placed from each spot’s distance. Real map tiles come later.
+function MapView({ zip, onOpen }) {
+  const [sel, setSel] = useState(null);
+  const pins = DATA.places.map((p, i) => { const a = i * 0.9 + 0.5, r = 34 + p.mi * zip.f * 20; return { p, x: 150 + r * Math.cos(a), y: 170 + r * Math.sin(a) }; });
+  const pl = sel && DATA.places.find(p => p.id === sel);
+  return (
+    <div className="space-y-3">
+      <h2 className="text-xl font-black">Spots near {zip.n}</h2>
+      <div className="overflow-hidden rounded-2xl border border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950">
+        <svg viewBox="0 0 300 340" className="block w-full" role="img" aria-label="Map of nearby food spots">
+          {[60, 120, 180, 240, 300].map(v => <path key={"h" + v} d={`M0 ${v}H300`} strokeWidth="6" className="stroke-violet-200 dark:stroke-violet-900" />)}
+          {[50, 110, 170, 230, 280].map(v => <path key={"v" + v} d={`M${v} 0V340`} strokeWidth="6" className="stroke-violet-200 dark:stroke-violet-900" />)}
+          <circle cx="150" cy="170" r="15" fill="#38bdf8" opacity=".3" /><circle cx="150" cy="170" r="6" fill="#0284c7" stroke="#fff" strokeWidth="2" />
+          <text x="150" y="196" textAnchor="middle" fontSize="10" fontWeight="700" className="fill-sky-700 dark:fill-sky-300">You are here</text>
+          {pins.map(({ p, x, y }) => <g key={p.id} onClick={() => setSel(p.id)} className="cursor-pointer"><circle cx={x} cy={y} r="12" fill={sel === p.id ? "#facc15" : "#7c3aed"} stroke="#fff" strokeWidth="2" /><text x={x} y={y + 4} textAnchor="middle" fontSize="11">🍴</text></g>)}
+        </svg>
+      </div>
+      {pl ? <PlaceCard pl={pl} zip={zip} mode="any" tip={0} onOpen={onOpen} /> : <p className="text-center text-sm text-stone-500 dark:text-stone-400">Tap a spot to see its best deal.</p>}
+    </div>
+  );
+}
+
+function Events({ kind, zip }) {
+  const zn = z => DATA.zips.find(x => x.z === z).n;
+  const list = DATA.events.filter(e => e.k === kind).sort((a, b) => (b.z === zip.z) - (a.z === zip.z));
+  return (
+    <div className="space-y-3">
+      <h2 className="text-xl font-black">{kind === "event" ? "Community events" : "Entertainment"}</h2>
+      <p className="text-xs text-stone-600 dark:text-stone-400">{zip.n} first, then nearby. Mock listings; a backend scraper would pull these from village, library, park district, and venue calendars.</p>
+      {list.map((e, i) => (
+        <Card key={i} className="flex items-center gap-3">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-violet-100 text-xl dark:bg-violet-900">{e.i}</span>
+          <div><div className="font-bold">{e.t}</div><div className="text-xs text-stone-500 dark:text-stone-400">{e.w} · {e.at}</div>
+          <div className={"mt-1 text-xs font-semibold " + (e.z === zip.z ? "text-violet-700 dark:text-yellow-300" : "text-stone-400")}>{e.z === zip.z ? "📍 In " : "Nearby · "}{zn(e.z)} · via {e.src}</div></div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function Biz({ role, toast }) {
+  const m = role === "merchant";
+  return (
+    <div className="space-y-3">
+      <h2 className="text-xl font-black">Business owners</h2>
+      <p className="text-sm text-stone-500 dark:text-stone-400">{m ? "Claim your page to post Feelz and hours." : "Know an owner? Invite them to claim their page."}</p>
+      {DATA.places.filter(p => !p.claimed).map(p => (
+        <Card key={p.id} className="flex items-center justify-between">
+          <div><div className="font-bold">{p.name}</div><div className="text-xs text-stone-500 dark:text-stone-400">{p.cat} · unclaimed</div></div>
+          <button onClick={() => toast("Demo: " + (m ? "claim request sent for " + p.name : "invite sent"))} className="rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white">{m ? "Claim" : "Invite"}</button>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function Info() {
+  const plats = {};
+  DATA.places.forEach(p => p.ch.forEach(c => { plats[c.p] = Math.min(plats[c.p] ?? 99, c.t); }));
+  return (
+    <div className="space-y-4">
+      <Card><h2 className="text-xl font-black">How Feelz works</h2><p className="mt-2 text-sm">Feelz feels for menu prices, fees, and promos from each vendor, adds up markup, fees, estimated tax, promos, and your tip for your exact order, and shows the cheapest way to get it. Pickup and local picks are highlighted to keep dollars in your community.</p></Card>
+      <Card><h3 className="mb-2 font-bold">Vendor feeds</h3>{Object.entries(plats).map(([p, t]) => <div key={p} className="flex items-center justify-between py-1.5 text-sm"><Chip p={p} /><span className="text-stone-500 dark:text-stone-400">synced {ago(t)}</span></div>)}</Card>
+    </div>
+  );
+}
+
+function Settings() {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-black">Settings</h2>
+      <Card><p className="text-sm">Theme follows your device’s light or dark mode.</p></Card>
+      <Card><p className="text-sm">Prices on Home are shown before tip. You choose a tip at checkout.</p></Card>
+    </div>
+  );
+}
+
+function Account({ user, setUser, zip, setZip, logout, toast }) {
+  const [name, setName] = useState(user.name);
+  const save = () => {
+    const u = { ...user, name: name.trim() || user.name, zip: zip.z };
+    if (!user.guest) { const all = store.get(AK) || {}; all[user.email] = { ...all[user.email], name: u.name, zip: u.zip }; store.set(AK, all); }
+    setUser(u); toast("Profile saved");
+  };
+  const fld = "mt-1 w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-stone-900";
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-black">My profile</h2>
+      <Card className="flex flex-col items-center gap-1 text-center">
+        <span className="grid h-24 w-24 place-items-center rounded-full bg-violet-100 dark:bg-violet-900"><Mascot size={72} /></span>
+        <div className="mt-1 font-bold">{user.name}</div>
+        <div className="text-xs text-stone-500 dark:text-stone-400">{user.guest ? "Guest (not saved)" : user.email} · {user.role === "merchant" ? "Business owner" : "Customer"}</div>
+      </Card>
+      <Card className="space-y-3">
+        <label className="block text-sm font-medium">Display name<input value={name} onChange={e => setName(e.target.value)} className={fld} /></label>
+        <label className="block text-sm font-medium">Home area<select value={zip.z} onChange={e => setZip(DATA.zips.find(z => z.z === e.target.value))} className={fld}>{DATA.zips.map(z => <option key={z.z} value={z.z}>{z.n} {z.z}</option>)}</select></label>
+        <button onClick={save} className={BTN}>Save profile</button>
+      </Card>
+      <button onClick={logout} className="w-full rounded-xl bg-violet-600 py-3 font-semibold text-white">Log out</button>
+    </div>
+  );
+}
+
+function App() {
+  const [splash, setSplash] = useState(true);
+  const [user, setUser] = useState(() => { const e = store.get(SK); return e ? (store.get(AK) || {})[e] || null : null; });
+  const role = user && user.role;
+  const [scr, setScr] = useState("home");
+  const [open, setOpen] = useState(null);
+  const [drawer, setDrawer] = useState(false);
+  const [zip, setZip] = useState(() => DATA.zips.find(z => z.z === (user && user.zip)) || DATA.zips[0]);
+  const [bud, setBud] = useState(30);
+  const [msg, setMsg] = useState("");
+  const [sync, setSync] = useState("Demo data · synced 12 min ago");
+  useEffect(() => { const t = setTimeout(() => setSplash(false), 2000); return () => clearTimeout(t); }, []);
+  const toast = m => { setMsg(m); setTimeout(() => setMsg(""), 2200); };
+  const doSync = () => { setSync("Syncing vendors…"); setTimeout(() => setSync("Synced just now (demo)"), 900); };
+  const go = s => { setScr(s); setOpen(null); window.scrollTo(0, 0); };
+  const openPlace = id => { setOpen(id); window.scrollTo(0, 0); };
+  if (splash) return <Splash />;
+  if (!user) return <Login onLogin={u => { setUser(u); const z = DATA.zips.find(x => x.z === u.zip); if (z) setZip(z); }} />;
+  const place = open && DATA.places.find(p => p.id === open);
+  const Tab = ({ id, icon, l }) => <button onClick={() => go(id)} className={"flex-1 py-2 text-xs font-semibold " + (scr === id && !open ? "text-violet-600 dark:text-yellow-300" : "text-stone-500")}><div className="text-xl">{icon}</div>{l}</button>;
+  return (
+    <div className="mx-auto min-h-screen max-w-md pb-24">
+      <Drawer open={drawer} onClose={() => setDrawer(false)} go={go} role={role} />
+      <header className="sticky z-20 bg-gradient-to-r from-violet-800 to-indigo-700 px-4 py-3 text-white" style={{ top: "env(safe-area-inset-top,0px)" }}>
+        <div className="flex items-center gap-3">
+          <button aria-label="Open menu" onClick={() => setDrawer(true)} className="text-2xl">☰</button>
+          <Mark /><span className="text-2xl font-black italic">Feelz</span>
+          <select aria-label="Choose your area" value={zip.z} onChange={e => setZip(DATA.zips.find(z => z.z === e.target.value))} className="ml-auto rounded-lg bg-white/15 px-2 py-1 text-sm text-white">
+            {DATA.zips.map(z => <option key={z.z} value={z.z} className="text-stone-900">{z.n} {z.z}</option>)}
+          </select>
+          <button aria-label="My account" onClick={() => go("account")} className="grid h-9 w-9 place-items-center rounded-full bg-violet-100"><Mascot size={28} /></button>
+        </div>
+        <div className="mt-1 flex items-center justify-between text-xs text-violet-200">
+          <span>{sync}</span>
+          <button onClick={doSync} className="font-bold text-yellow-300 underline">Sync</button>
+        </div>
+      </header>
+      <main className="px-4 pt-4">
+        {place ? <PlacePage key={place.id} pl={place} zip={zip} onBack={() => setOpen(null)} toast={toast} />
+          : scr === "home" ? <Home zip={zip} onOpen={openPlace} go={go} onBudget={n => { setBud(n); go("budget"); }} />
+          : scr === "budget" ? <Budget key={bud} start={bud} zip={zip} onOpen={openPlace} />
+          : scr === "map" ? <MapView zip={zip} onOpen={openPlace} />
+          : scr === "friends" ? <Friends onOpen={openPlace} />
+          : scr === "info" ? <Info />
+          : scr === "events" || scr === "fun" ? <Events zip={zip} kind={scr === "fun" ? "fun" : "event"} />
+          : scr === "biz" ? <Biz role={role} toast={toast} />
+          : scr === "account" ? <Account user={user} setUser={setUser} zip={zip} setZip={setZip} toast={toast} logout={() => { store.del(SK); setUser(null); setScr("home"); }} />
+          : <Settings />}
+        <p className="mt-6 text-center text-xs text-violet-900/70 dark:text-violet-300">Prototype · all businesses and prices are fictional mock data</p>
+      </main>
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900" style={{ paddingBottom: "env(safe-area-inset-bottom,0px)" }}>
+        <div className="mx-auto flex max-w-md"><Tab id="map" icon="📍" l="Map" /><Tab id="friends" icon="👥" l="Community" /><Tab id="home" icon="🏠" l="Home" /><Tab id="info" icon="ℹ️" l="Info" /></div>
+      </nav>
+      {msg && <div className="fixed inset-x-4 bottom-24 z-20 mx-auto max-w-sm rounded-xl bg-stone-900 px-4 py-2 text-center text-sm text-white shadow-lg">{msg}</div>}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
